@@ -1,0 +1,4 @@
+
+
+1. git init inicia un repositorio local (copia todo lo que tengo en el directorio donde lo inicio)
+
