@@ -10,3 +10,19 @@ p {
     /* 16px por default */
     font-size: 20px;
 }
+
+/* 1. Selector con id usarlo preferentemente una sola vez ya que un id es un identificador unico*/
+
+#colorMarron{
+    color: brown;
+}
+
+/* 2. Selector de CLASE: Si lo podemos utilizar mas de una vez  */
+.colorFondo{
+    background: violet;
+}
+
+.textoGrande{
+    font-size: 60px;
+}
+
