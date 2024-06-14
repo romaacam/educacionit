@@ -1,0 +1,243 @@
+BalsamiqSearchAutoComplete = {};
+
+BAC = function(searching, results, bindToEsc)
+{
+	var thisdomain = window.location.href.split("/")[2].split(":")[0];
+	this.firstDomain = (thisdomain === "localhost") ? "balsamiq.com" : thisdomain;
+
+	this.searching = searching;
+	this.results = results;
+	this.highlightIdx = -1;
+	this.bindToEsc = bindToEsc;
+};
+
+BAC.getResults = function(p_string) {
+	return (
+		fetch("https://api.balsamiq.com/search?q="+p_string)
+		.then(function (response) { return response.json() })
+		.then((function (data) { return data.records.page }))
+	);
+}
+
+BAC.prototype.showSearching = function(p_showIt)
+{
+	this.searching.style.visibility = p_showIt ? "visible" : "hidden";
+};
+
+BAC.prototype.closeOnEsc = function(e)
+{
+	// escape key maps to keycode `27`
+	if (e.keyCode === 27) {
+		this.showSearching(false);
+		this.showResults(false);
+	}
+};
+
+BAC.prototype.showResults = function(p_showIt)
+{
+	this.results.style.visibility = p_showIt ? "visible" : "hidden";
+
+	if (this.bindToEsc) {
+		if (p_showIt)
+		{
+			document.addEventListener('keyup', this.closeOnEsc.bind(this));
+		}
+		else
+		{
+			document.removeEventListener('keyup', this.closeOnEsc);
+		}
+	}
+};
+
+BAC.prototype.doSearch = function(p_string)
+{
+	this.highlightIdx = -1;
+
+	if (p_string === null || p_string === "" || p_string.length < 2) {
+		this.results.style.visibility = "hidden";
+		return;
+	}
+
+	this.searching.innerHTML = "<img src='https://balsamiq.com/assets/loading.gif' alt='Searching...'>";
+	this.showSearching(true);
+
+	BAC.getResults(p_string)
+	.then((function (res) {
+		if (res.length === 0) {
+			this.searching.innerHTML = "<span class='noresult'>No results</span>";
+			this.showResults(false);
+			return;
+		}
+
+		this.showResults(true);
+		this.showSearching(false);
+
+		var i;
+		var page;
+
+		var list = `<ul class="nostyle search-results">`;
+
+		var topList = "";
+		var blogList = "";
+
+		var l = res.length;
+		for (i=0; i<l; i++) {
+			page = res[i];
+
+			var title = page.title;
+			title = title.replace(/ \| Balsamiq$/, "");
+			title = title.replace(/ \| Wireframing Academy$/, " [Learn]");
+			title = title.replace(/ \| The Balsamiq Blog$/, " [News]");
+			title = title.replace(/ \| Balsamiq Company News$/, " [News]");
+			title = title.replace(/ \| Wireframes to Go$/, " [Wireframes To Go]");
+
+			var highlight = "";
+			if (page.highlight.title && page.highlight.body) {
+				highlight = page.highlight.body.replace(/em>/g, "b>");
+			} else {
+				if (page.highlight.sections) {
+					highlight = page.highlight.sections.replace(/em>/g, "b>");
+				} else if (page.highlight.body) {
+					highlight = page.highlight.body.replace(/em>/g, "b>");
+				}
+			}
+
+			var item = "<li><h4><a href='"+page.url+"'>"+title+"</a></h4><small class='search-url'><a href='"+page.url+"'>"+page.url+"</a></small><small class='search-highlight'>"+highlight+"</small></li>\n";
+			if (page.url.indexOf("balsamiq.com/company/news") != -1) {
+				blogList += item;
+			} else {
+				topList += item;
+			}
+		}
+
+		list += topList + blogList + "</ul>\n";
+
+		this.results.innerHTML = list;
+	}).bind(this))
+	.catch((function () {
+		this.searching.innerHTML = "<span class='errorsearching'>Error searching</span>";
+		this.showResults(false);
+	}).bind(this));
+};
+
+//The div has to have an input component in it
+BalsamiqSearchAutoComplete.initAutoCompleteInputDiv = function(divID)
+{
+	var div = document.getElementById(divID);
+	div.insertAdjacentHTML('beforeend', "<div id='searching' class='search__loading'>Searching...</div>");
+	div.insertAdjacentHTML('beforeend', "<div id='results' class='search__results'></div>");
+
+	var input = div.querySelector("input");
+	var results = document.getElementById("results");
+
+	var bac = new BAC(document.getElementById("searching"), results, true);
+
+	var pendingSendTimer;
+
+	input.addEventListener('input', function()
+	{
+		bac.showSearching(false);
+		bac.showResults(false);
+
+		if (pendingSendTimer != null) {
+			//Stop the previous send
+			clearInterval(pendingSendTimer);
+		}
+		//Start a new delayed send
+		pendingSendTimer = setInterval(	function(){
+			clearInterval(pendingSendTimer);
+			bac.doSearch(input.value);
+		}, 250);
+	});
+
+	input.addEventListener("keypress", function(e)
+	{
+		// enter key maps to keycode `13`
+		if (e.keyCode == 13)
+		{
+			e.preventDefault();
+
+			if (bac.highlightIdx < 0) {
+				window.location.href = 'https://balsamiq.com/search/?q=' + e.target.value;
+				return false;
+			}
+
+			var _results = [].slice.call(results.querySelectorAll("li"));
+
+			window.location.href = _results[bac.highlightIdx].querySelector("a").getAttribute("href");
+			return false;
+		}
+	});
+
+	input.addEventListener("keydown", function (e) {
+		// arrow-up key maps to keycode `38`
+		// arrow-down key maps to keycode `40`
+		if ([38, 40].indexOf(e.keyCode) < 0) { return }
+
+		e.preventDefault();
+
+		// arrow-up key maps to keycode `38`
+		if (e.keyCode === 38) {
+			var _results = [].slice.call(results.querySelectorAll("li"));
+
+			if (!_results.length) { return }
+
+			if ((bac.highlightIdx - 1) >= -1) { bac.highlightIdx -= 1 }
+
+			if ((bac.highlightIdx + 1) <= _results.length) { _results[bac.highlightIdx + 1].classList.remove("highlighted") }
+			if ((bac.highlightIdx) >= 0) { _results[bac.highlightIdx].classList.add("highlighted") }
+
+			return;
+		}
+
+		// arrow-down key maps to keycode `40`
+		if (e.keyCode === 40) {
+			var _results = [].slice.call(results.querySelectorAll("li"));
+
+			if (!_results.length) { return }
+
+			if ((bac.highlightIdx + 1) < _results.length) { bac.highlightIdx += 1 }
+
+			if ((bac.highlightIdx - 1) >= 0) { _results[bac.highlightIdx - 1].classList.remove("highlighted") }
+			_results[bac.highlightIdx].classList.add("highlighted");
+
+			return;
+		}
+	});
+};
+
+BalsamiqSearchAutoComplete.initWithSearch = function(query, searchingDiv, resultsDiv)
+{
+	var bac = new BAC(searchingDiv, resultsDiv, false);
+	bac.doSearch(query);
+};
+
+BalsamiqSearchAutoComplete.getRelatedArticles = function(query) {
+	return BAC.getResults(query)
+	.then(function (res) {
+		var resArray = [];
+		var i;
+		var page;
+		for (i=0; i<10; i++) {
+			page = res[i];
+
+			function getPath(url) {
+				return url.split('/').slice(3).join('/');
+			}
+
+			if (getPath(page.url) === getPath(window.location.href.split("#")[0])) {
+				continue;	//ignore myself
+			}
+
+			var title = page.title.split(' - ')[0];
+			title = title.split(' | ')[0];
+
+			resArray.push({title:title, path:page.url.replace('https://balsamiq.com', ''), image:page.image});
+		}
+		return resArray;
+	});
+}
+
+BalsamiqSearchAutoComplete.getResults = function(query) {
+	return BAC.getResults(query);
+}
