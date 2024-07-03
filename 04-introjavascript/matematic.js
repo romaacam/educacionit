@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+//<<<<<<< HEAD
 
 
 // Operadores matemáticos
@@ -40,15 +40,15 @@ edad = 50;
 let uno = 50;
 uno = 'pepe'
 uno = true;
-=======
+//=======
 
 
 // Operadores matemáticos
 // + - * / % 
-let numUno = 15;
-let numDos = 50;
+//let numUno = 15;
+//let numDos = 50;
 
-let resultado;
+//let resultado;
 /* let resultadoSuma;
 let resultadoResta;
 let resultadoDivision;
@@ -97,4 +97,4 @@ console.log('=================================');
 // El usuario nos proporciona los valores de los numeros 
 
 //let numeroUnode
->>>>>>> 10b582596d0ab62f3d8b56b6ef996062d87fd7d0
+//>>>>>>> 10b582596d0ab62f3d8b56b6ef996062d87fd7d0
